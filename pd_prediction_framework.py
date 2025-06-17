@@ -231,6 +231,52 @@ def permutation_feature_importance(model, X_test, y_test, feature_names, model_t
     
     return importance_df
 
+import shap
+import numpy as np
+import pandas as pd
+
+def shap_feature_importance(model, X_test, feature_names, model_type='sklearn'):
+    """
+    Calculate SHAP feature importance
+
+    Args:
+        model: Trained model
+        X_test: Test features (numpy or DataFrame)
+        feature_names: List of feature names
+        model_type: 'sklearn', 'xgboost', or 'rnn'
+
+    Returns:
+        DataFrame with mean absolute SHAP value per feature
+    """
+    # Choose appropriate SHAP explainer
+    if model_type == 'xgboost':
+        explainer = shap.TreeExplainer(model)
+        shap_values = explainer.shap_values(X_test)
+
+    elif model_type == 'sklearn':
+        explainer = shap.Explainer(model, X_test)  # works for tree and linear models
+        shap_values = explainer(X_test).values
+
+    elif model_type == 'rnn':
+        # Assumes model is a Keras model and X_test is a numpy array
+        explainer = shap.DeepExplainer(model, X_test)
+        shap_values = explainer.shap_values(X_test)[0]
+
+    else:
+        raise ValueError(f"Unsupported model_type: {model_type}")
+
+    # Compute mean absolute SHAP value for each feature
+    shap_values = np.abs(shap_values)
+    mean_shap = np.mean(shap_values, axis=0)
+
+    importance_df = pd.DataFrame({
+        'feature': feature_names,
+        'importance_mean': mean_shap
+    }).sort_values('importance_mean', ascending=False)
+
+    return importance_df
+
+
 # Example usage for one dataset
 def example_usage():
     """Example of how to use the functions for one dataset"""
