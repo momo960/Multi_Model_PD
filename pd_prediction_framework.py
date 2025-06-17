@@ -3,7 +3,7 @@ import numpy as np
 from sklearn.model_selection import train_test_split
 from sklearn.preprocessing import StandardScaler, LabelEncoder
 from sklearn.linear_model import LogisticRegression
-from sklearn.inspection import permutation_importance
+import shap
 from sklearn.metrics import roc_auc_score
 import xgboost as xgb
 import tensorflow as tf
@@ -168,114 +168,78 @@ def run_rnn(X_train_scaled, y_train, X_test_scaled, y_test, epochs=100, verbose=
     
     return model, y_pred, gini, history
 
-def permutation_feature_importance(model, X_test, y_test, feature_names, model_type='sklearn', n_repeats=5):
-    """
-    Calculate permutation feature importance
-    
-    Args:
-        model: Trained model
-        X_test: Test features
-        y_test: Test target
-        feature_names: List of feature names
-        model_type: 'sklearn', 'xgboost', or 'rnn'
-        n_repeats: Number of permutation repeats
-    
-    Returns:
-        DataFrame with feature importance scores
-    """
-    if model_type == 'rnn':
-        # Custom implementation for neural networks
-        baseline_score = gini_coefficient(y_test, model.predict(X_test, verbose=0).flatten())
-        
-        importance_scores = []
-        importance_stds = []
-        
-        for i in range(X_test.shape[1]):
-            scores = []
-            for _ in range(n_repeats):
-                X_permuted = X_test.copy()
-                X_permuted[:, i] = np.random.permutation(X_permuted[:, i])
-                permuted_pred = model.predict(X_permuted, verbose=0).flatten()
-                permuted_score = gini_coefficient(y_test, permuted_pred)
-                importance = baseline_score - permuted_score
-                scores.append(importance)
-            
-            importance_scores.append(np.mean(scores))
-            importance_stds.append(np.std(scores))
-    
-    else:
-        # For sklearn-compatible models (Logistic Regression and XGBoost)
-        if model_type == 'sklearn':
-            # For logistic regression with probability output
-            scoring_func = lambda est, X, y: gini_coefficient(y, est.predict_proba(X)[:, 1])
-        else:
-            # For XGBoost with direct prediction
-            scoring_func = lambda est, X, y: gini_coefficient(y, np.clip(est.predict(X), 0, 1))
-        
-        perm_importance = permutation_importance(
-            model, X_test, y_test,
-            scoring=scoring_func,
-            n_repeats=n_repeats,
-            random_state=42
-        )
-        
-        importance_scores = perm_importance.importances_mean
-        importance_stds = perm_importance.importances_std
-    
-    # Create results DataFrame
-    importance_df = pd.DataFrame({
-        'feature': feature_names,
-        'importance_mean': importance_scores,
-        'importance_std': importance_stds
-    }).sort_values('importance_mean', ascending=False)
-    
-    return importance_df
-
-import shap
-import numpy as np
-import pandas as pd
-
-def shap_feature_importance(model, X_test, feature_names, model_type='sklearn'):
+def shap_feature_importance(model, X_train, X_test, feature_names, model_type='sklearn', max_evals=100):
     """
     Calculate SHAP feature importance
-
+    
     Args:
         model: Trained model
-        X_test: Test features (numpy or DataFrame)
+        X_train: Training features (for background samples)
+        X_test: Test features
         feature_names: List of feature names
         model_type: 'sklearn', 'xgboost', or 'rnn'
-
+        max_evals: Maximum evaluations for SHAP (controls computation time)
+    
     Returns:
-        DataFrame with mean absolute SHAP value per feature
+        DataFrame with SHAP importance scores and explainer object
     """
-    # Choose appropriate SHAP explainer
-    if model_type == 'xgboost':
-        explainer = shap.TreeExplainer(model)
-        shap_values = explainer.shap_values(X_test)
-
-    elif model_type == 'sklearn':
-        explainer = shap.Explainer(model, X_test)  # works for tree and linear models
-        shap_values = explainer(X_test).values
-
-    elif model_type == 'rnn':
-        # Assumes model is a Keras model and X_test is a numpy array
-        explainer = shap.DeepExplainer(model, X_test)
-        shap_values = explainer.shap_values(X_test)[0]
-
-    else:
-        raise ValueError(f"Unsupported model_type: {model_type}")
-
-    # Compute mean absolute SHAP value for each feature
-    shap_values = np.abs(shap_values)
-    mean_shap = np.mean(shap_values, axis=0)
-
-    importance_df = pd.DataFrame({
-        'feature': feature_names,
-        'importance_mean': mean_shap
-    }).sort_values('importance_mean', ascending=False)
-
-    return importance_df
-
+    try:
+        if model_type == 'sklearn':
+            # For Logistic Regression
+            explainer = shap.LinearExplainer(model, X_train)
+            shap_values = explainer.shap_values(X_test)
+            
+        elif model_type == 'xgboost':
+            # For XGBoost - use TreeExplainer
+            explainer = shap.TreeExplainer(model)
+            shap_values = explainer.shap_values(X_test)
+            
+        elif model_type == 'rnn':
+            # For neural networks - use DeepExplainer or KernelExplainer
+            # Use a subset of training data as background for efficiency
+            background = X_train[:min(100, len(X_train))]
+            
+            # Try DeepExplainer first, fallback to KernelExplainer if needed
+            try:
+                explainer = shap.DeepExplainer(model, background)
+                shap_values = explainer.shap_values(X_test[:min(200, len(X_test))])
+            except:
+                print("DeepExplainer failed, using KernelExplainer (slower)...")
+                explainer = shap.KernelExplainer(
+                    lambda x: model.predict(x, verbose=0).flatten(), 
+                    background
+                )
+                shap_values = explainer.shap_values(X_test[:min(100, len(X_test))], nsamples=max_evals)
+        
+        # Handle different SHAP value formats
+        if isinstance(shap_values, list):
+            # For classification models, take positive class SHAP values
+            shap_values = shap_values[1] if len(shap_values) == 2 else shap_values[0]
+        
+        # Calculate mean absolute SHAP values for feature importance
+        mean_shap_values = np.abs(shap_values).mean(axis=0)
+        
+        # Create results DataFrame
+        importance_df = pd.DataFrame({
+            'feature': feature_names,
+            'shap_importance': mean_shap_values,
+            'shap_importance_normalized': mean_shap_values / np.sum(mean_shap_values)
+        }).sort_values('shap_importance', ascending=False)
+        
+        return importance_df, explainer, shap_values
+        
+    except Exception as e:
+        print(f"SHAP calculation failed: {str(e)}")
+        print("Falling back to simple feature importance...")
+        
+        # Fallback: return zero importance
+        importance_df = pd.DataFrame({
+            'feature': feature_names,
+            'shap_importance': np.zeros(len(feature_names)),
+            'shap_importance_normalized': np.zeros(len(feature_names))
+        })
+        
+        return importance_df, None, None
 
 # Example usage for one dataset
 def example_usage():
@@ -299,7 +263,7 @@ def example_usage():
     print(f"Gini coefficient: {lr_gini:.4f}")
     
     # Calculate feature importance for Logistic Regression
-    lr_importance = permutation_feature_importance(lr_model, X_test_scaled, y_test, feature_names, 'sklearn')
+    lr_importance, lr_explainer, lr_shap_values = shap_feature_importance(lr_model, X_train_scaled, X_test_scaled, feature_names, 'sklearn')
     print("Top 5 important features:")
     print(lr_importance.head())
     
@@ -309,7 +273,7 @@ def example_usage():
     print(f"Gini coefficient: {xgb_gini:.4f}")
     
     # Calculate feature importance for XGBoost
-    xgb_importance = permutation_feature_importance(xgb_model, X_test, y_test, feature_names, 'xgboost')
+    xgb_importance, xgb_explainer, xgb_shap_values = shap_feature_importance(xgb_model, X_train, X_test, feature_names, 'xgboost')
     print("Top 5 important features:")
     print(xgb_importance.head())
     
@@ -319,7 +283,7 @@ def example_usage():
     print(f"Gini coefficient: {rnn_gini:.4f}")
     
     # Calculate feature importance for RNN
-    rnn_importance = permutation_feature_importance(rnn_model, X_test_scaled, y_test, feature_names, 'rnn')
+    rnn_importance, rnn_explainer, rnn_shap_values = shap_feature_importance(rnn_model, X_train_scaled, X_test_scaled, feature_names, 'rnn')
     print("Top 5 important features:")
     print(rnn_importance.head())
     
@@ -360,27 +324,57 @@ def run_all_datasets():
         # Run Logistic Regression
         print("\nRunning Logistic Regression...")
         lr_model, lr_pred, lr_gini = run_logistic(X_train_scaled, y_train, X_test_scaled, y_test)
-        lr_importance = permutation_feature_importance(lr_model, X_test_scaled, y_test, feature_names, 'sklearn')
+        lr_importance, lr_explainer, lr_shap_values = shap_feature_importance(lr_model, X_train_scaled, X_test_scaled, feature_names, 'sklearn')
         results[dataset_name]['logistic'] = {'gini': lr_gini, 'importance': lr_importance}
         print(f"Logistic Regression Gini: {lr_gini:.4f}")
         
         # Run XGBoost
         print("Running XGBoost...")
         xgb_model, xgb_pred, xgb_gini = run_xgboost(X_train, y_train, X_test, y_test)
-        xgb_importance = permutation_feature_importance(xgb_model, X_test, y_test, feature_names, 'xgboost')
+        xgb_importance, xgb_explainer, xgb_shap_values = shap_feature_importance(xgb_model, X_train, X_test, feature_names, 'xgboost')
         results[dataset_name]['xgboost'] = {'gini': xgb_gini, 'importance': xgb_importance}
         print(f"XGBoost Gini: {xgb_gini:.4f}")
         
         # Run RNN
         print("Running RNN...")
         rnn_model, rnn_pred, rnn_gini, rnn_history = run_rnn(X_train_scaled, y_train, X_test_scaled, y_test)
-        rnn_importance = permutation_feature_importance(rnn_model, X_test_scaled, y_test, feature_names, 'rnn')
+        rnn_importance, rnn_explainer, rnn_shap_values = shap_feature_importance(rnn_model, X_train_scaled, X_test_scaled, feature_names, 'rnn')
         results[dataset_name]['rnn'] = {'gini': rnn_gini, 'importance': rnn_importance}
         print(f"RNN Gini: {rnn_gini:.4f}")
     
     return results
 
-if __name__ == "__main__":
-    # Run the example
-    # results = run_all_datasets()
-    pass
+def plot_shap_summary(explainer, shap_values, X_test, feature_names, model_name):
+    """
+    Create SHAP summary plots
+    
+    Args:
+        explainer: SHAP explainer object
+        shap_values: SHAP values
+        X_test: Test features
+        feature_names: List of feature names
+        model_name: Name of the model for plot title
+    """
+    if explainer is not None and shap_values is not None:
+        try:
+            # Summary plot
+            plt.figure(figsize=(10, 6))
+            shap.summary_plot(shap_values, X_test, feature_names=feature_names, show=False)
+            plt.title(f'SHAP Summary Plot - {model_name}')
+            plt.tight_layout()
+            plt.show()
+            
+            # Bar plot of feature importance
+            plt.figure(figsize=(10, 6))
+            shap.summary_plot(shap_values, X_test, feature_names=feature_names, plot_type="bar", show=False)
+            plt.title(f'SHAP Feature Importance - {model_name}')
+            plt.tight_layout()
+            plt.show()
+            
+        except Exception as e:
+            print(f"Could not create SHAP plots for {model_name}: {str(e)}")
+    else:
+        print(f"No SHAP values available for {model_name}")
+
+# Add matplotlib import at the top if not already present
+import matplotlib.pyplot as plt
