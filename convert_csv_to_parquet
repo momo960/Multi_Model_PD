@@ -1,0 +1,42 @@
+import pandas as pd
+import pyarrow as pa
+import pyarrow.parquet as pq
+
+# 文件路径
+data_file = 'your_large_file.csv'     # 主CSV文件，无header
+header_file = 'header.csv'            # 包含一行列名
+parquet_file = 'output_7m.parquet'
+
+# 参数设置
+chunk_size = 100_000
+target_rows = 7_000_000
+rows_written = 0
+
+# 读取列名
+column_names = pd.read_csv(header_file, header=None).iloc[0].tolist()
+
+# 初始化Parquet写入器（使用pyarrow）
+parquet_writer = None
+
+# 按块读取CSV并逐块写入Parquet
+for chunk in pd.read_csv(data_file, header=None, names=column_names, chunksize=chunk_size):
+    if rows_written >= target_rows:
+        break
+
+    # 如果最后一个chunk超过了剩余的目标行数，则裁剪
+    if rows_written + len(chunk) > target_rows:
+        chunk = chunk.iloc[:target_rows - rows_written]
+
+    # 转换为 Arrow 表格
+    table = pa.Table.from_pandas(chunk)
+
+    # 初始化写入器
+    if parquet_writer is None:
+        parquet_writer = pq.ParquetWriter(parquet_file, table.schema)
+
+    parquet_writer.write_table(table)
+    rows_written += len(chunk)
+
+# 关闭写入器
+if parquet_writer:
+    parquet_writer.close()
