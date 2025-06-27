@@ -40,3 +40,53 @@ for chunk in pd.read_csv(data_file, header=None, names=column_names, chunksize=c
 # 关闭写入器
 if parquet_writer:
     parquet_writer.close()
+
+import pandas as pd
+import numpy as np
+
+def process_data(data_path, header_path):
+    """
+    处理无表头的 data.csv 和带有信息的 header.csv：
+    - 加上表头
+    - 用 header 第三行补全缺失值
+    - 根据 header 第一行调整数据类型
+    
+    Args:
+        data_path (str): data.csv 的路径
+        header_path (str): header.csv 的路径
+        
+    Returns:
+        pd.DataFrame: 处理后的 DataFrame
+    """
+    # 读取 header.csv
+    header_df = pd.read_csv(header_path, header=None)
+
+    # 获取列名、数据类型、缺失值填充值
+    dtypes_row = header_df.iloc[0]   # 第一行，数据类型 N/C/I/L
+    col_names = header_df.iloc[1]   # 第二行，列名
+    fill_values = header_df.iloc[2] # 第三行，用来填补空值
+    
+    # 读取 data.csv，没有表头
+    data_df = pd.read_csv(data_path, header=None)
+    
+    # 设置表头
+    data_df.columns = col_names
+    
+    # 填补缺失值
+    for col in data_df.columns:
+        data_df[col] = data_df[col].replace(['', ' ', 'NaN', 'nan', np.nan], np.nan)
+        if pd.isna(fill_values[col]):
+            continue
+        data_df[col] = data_df[col].fillna(fill_values[col])
+    
+    # 转换数据类型
+    for col in data_df.columns:
+        dtype_code = dtypes_row[col]
+        if dtype_code == 'N':
+            data_df[col] = pd.to_numeric(data_df[col], errors='coerce')
+        elif dtype_code in ['I', 'L']:
+            data_df[col] = pd.to_numeric(data_df[col], errors='coerce').astype('Int64')
+        elif dtype_code == 'C':
+            data_df[col] = data_df[col].astype('category')
+    
+    return data_df
