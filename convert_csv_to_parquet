@@ -90,3 +90,79 @@ def process_data(data_path, header_path):
             data_df[col] = data_df[col].astype('category')
     
     return data_df
+
+
+
+import numpy as np
+import pandas as pd
+from sklearn.model_selection import train_test_split
+from sklearn.metrics import roc_auc_score
+from tensorflow import keras
+from tensorflow.keras import layers
+import keras_tuner as kt
+
+# 设定输入数据（举例，请用你自己的数据替换）
+# X, y = ... 
+# X_train_scaled, X_test_scaled, y_train, y_test = train_test_split(...)
+
+input_dim = X_train_scaled.shape[1]
+
+def build_ann_model(hp):
+    model = keras.Sequential()
+    # 第一层
+    model.add(layers.Dense(
+        units=hp.Int('units1', min_value=32, max_value=128, step=32),
+        activation='relu',
+        input_shape=(input_dim,)
+    ))
+    model.add(layers.Dropout(hp.Float('dropout1', 0.0, 0.5, step=0.1)))
+    # 第二层
+    model.add(layers.Dense(
+        units=hp.Int('units2', min_value=8, max_value=64, step=8),
+        activation='relu'
+    ))
+    model.add(layers.Dropout(hp.Float('dropout2', 0.0, 0.5, step=0.1)))
+    # 输出层
+    model.add(layers.Dense(1, activation='sigmoid'))
+    # 优化器和学习率
+    model.compile(
+        optimizer=keras.optimizers.Adam(
+            hp.Float('learning_rate', 1e-4, 1e-2, sampling='log')),
+        loss='binary_crossentropy',
+        metrics=['AUC']
+    )
+    return model
+
+# 定义调参器
+tuner = kt.RandomSearch(
+    build_ann_model,
+    objective='val_auc',   # 用AUC作为评价指标
+    max_trials=10,         # 尝试10组参数组合
+    executions_per_trial=1,
+    directory='ann_tuning_dir',  # 保存模型的文件夹
+    project_name='ann_hyperparam'
+)
+
+# 启动调参
+tuner.search(
+    X_train_scaled, y_train,
+    epochs=50,                 # 每组最多训练50轮
+    validation_split=0.2,
+    batch_size=64,
+    callbacks=[keras.callbacks.EarlyStopping(patience=5)],
+    verbose=2
+)
+
+# 获取最优模型
+best_model = tuner.get_best_models(num_models=1)[0]
+
+# 用最优模型预测
+y_pred = best_model.predict(X_test_scaled).flatten()
+auc = roc_auc_score(y_test, y_pred)
+print(f'Best ANN AUC: {auc:.4f}')
+
+# 查看最佳超参数
+best_hp = tuner.get_best_hyperparameters()[0]
+print('Best Hyperparameters:')
+for key in best_hp.values.keys():
+    print(f'  {key}: {best_hp.get(key)}')
