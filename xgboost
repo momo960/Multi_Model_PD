@@ -1,0 +1,46 @@
+import optuna
+from xgboost import XGBRegressor
+import numpy as np
+
+def run_xgboost_optuna_reg(X_train, y_train, X_test, y_test, n_trials=30, random_state=42):
+    '''
+    用Optuna自动调参XGBRegressor，返回最优模型及相关指标
+    '''
+    def objective(trial):
+        param = {
+            'n_estimators': trial.suggest_int('n_estimators', 100, 300),
+            'max_depth': trial.suggest_int('max_depth', 3, 8),
+            'learning_rate': trial.suggest_float('learning_rate', 0.01, 0.2, log=True),
+            'subsample': trial.suggest_float('subsample', 0.7, 1.0),
+            'colsample_bytree': trial.suggest_float('colsample_bytree', 0.7, 1.0),
+            'min_child_weight': trial.suggest_int('min_child_weight', 1, 400),
+            'reg_lambda': trial.suggest_float('reg_lambda', 1, 151),
+            'tree_method': 'hist',
+            'random_state': random_state
+        }
+        model = XGBRegressor(**param)
+        model.fit(X_train, y_train)
+        y_pred = model.predict(X_test)
+        y_pred = np.clip(y_pred, 0, 1)  # 如果是概率型回归任务
+        # 用负MSE（因为optuna默认最大化）
+        mse = np.mean((y_test - y_pred) ** 2)
+        return -mse
+
+    study = optuna.create_study(direction='maximize')
+    study.optimize(objective, n_trials=n_trials)
+    
+    best_params = study.best_params
+    best_params.update({
+        'tree_method': 'hist',
+        'random_state': random_state
+    })
+    model = XGBRegressor(**best_params)
+    model.fit(X_train, y_train)
+    y_pred = model.predict(X_test)
+    y_pred = np.clip(y_pred, 0, 1)
+
+    gini = gini_coefficient(y_test, y_pred)
+    dcr = default_capture_rate(y_test, y_pred)
+    print("Best XGBoost params:", best_params)
+
+    return model, y_pred, gini, dcr, best_params
