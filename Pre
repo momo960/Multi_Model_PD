@@ -1,0 +1,24 @@
+In practice, newer versions of predictive models are usually developed by making one or more of the following changes:
+
+1. Switching to more advanced algorithms,
+
+
+2. Adding more data,
+
+
+3. Modifying or engineering features.
+
+
+
+While these changes typically result in improved model performance, they also come at a high cost.
+
+Development and validation cycles can span several months,
+
+They require significant human and computational resources,
+
+And the incremental performance gain may not always justify these investments.
+
+
+Therefore, the central question of this project is:
+
+> Is the performance improvement from updating algorithms, data, or features worth the associated cost?
