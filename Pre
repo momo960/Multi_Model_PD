@@ -1,24 +1,20 @@
-In practice, newer versions of predictive models are usually developed by making one or more of the following changes:
 
-1. Switching to more advanced algorithms,
+To evaluate whether model updates are worth the cost, I decompose the overall question into three sub-problems:
 
+What is the performance gain and cost from switching to a more advanced algorithm?
 
-2. Adding more data,
+What is the gain and cost from adding more data?
 
+What is the gain and cost from changing or engineering new features?
 
-3. Modifying or engineering features.
+To ensure fair comparison, I study each factor in isolation, holding the other two constant.
 
+I focus on a class of models known as low impact fraud models, because:
 
+They address similar business problems,
 
-While these changes typically result in improved model performance, they also come at a high cost.
+Share comparable data structures and modeling constraints,
 
-Development and validation cycles can span several months,
+And offer a stable testing ground to identify generalizable patterns.
 
-They require significant human and computational resources,
-
-And the incremental performance gain may not always justify these investments.
-
-
-Therefore, the central question of this project is:
-
-> Is the performance improvement from updating algorithms, data, or features worth the associated cost?
+✅ I’ve already completed the analysis for the first part: evaluating the cost-benefit of algorithm changes.
