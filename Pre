@@ -1,20 +1,40 @@
+A Key Observation
 
-To evaluate whether model updates are worth the cost, I decompose the overall question into three sub-problems:
+When the Gini of Logistic Regression (LR) is already high,
+➤ Switching to XGBoost yields limited improvement
 
-What is the performance gain and cost from switching to a more advanced algorithm?
+But when LR Gini is low,
+➤ XGBoost often brings significant gains
 
-What is the gain and cost from adding more data?
 
-What is the gain and cost from changing or engineering new features?
+🟦 [Insert graph: X-axis = LR Gini, Y-axis = XGB Gini – LR Gini]
 
-To ensure fair comparison, I study each factor in isolation, holding the other two constant.
+Why?
 
-I focus on a class of models known as low impact fraud models, because:
+If data is linearly separable, LR works well
 
-They address similar business problems,
+When data has complex non-linear structure, LR falls short
+➤ Tree-based models like XGBoost handle it better
 
-Share comparable data structures and modeling constraints,
 
-And offer a stable testing ground to identify generalizable patterns.
+So the key question becomes:
 
-✅ I’ve already completed the analysis for the first part: evaluating the cost-benefit of algorithm changes.
+> Can we estimate the “complexity” of a dataset in advance, to predict whether it’s worth switching from LR to XGBoost?
+
+
+
+
+---
+
+Challenges in Measuring Data Complexity
+
+Metrics like mutual information or covariance only capture relationships between individual features and the label
+➤ They ignore interactions between features
+
+Capturing higher-order interactions requires explicit feature crosses, which are computationally expensive
+
+
+Simple and practical solution:
+
+> ✅ Train a quick LR model on a small data subset
+→ Use its Gini as a proxy for data complexity
