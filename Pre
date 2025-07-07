@@ -1,12 +1,7 @@
-Now that I can predict how much Gini and default capture rate will improve, the next question is:
-How much business value does that translate to?
-The challenge is that every model serves a different business problem, with a different scale of impact.
-For one model, a 2% improvement in capture rate might save millions — for another, it might mean very little.
-To address this, I extract business scale from recent model documentation, using the relationship between a model's reported performance gain and its associated dollar impact.
-Once I have this scale, I combine it with the predicted performance improvement to estimate a performance-linked gain in dollars.
-The final step is to estimate the cost of switching algorithms.
-In my study, XGBoost required around 112 iterations, while Logistic Regression needed only 25.
-And each XGBoost iteration is hundreds of times more expensive in compute time.
-Using cloud pricing data, I calculate the training cost of moving to a more complex algorithm.
-At this point, I have all the components needed for a cost-benefit analysis —
-from data complexity, to predicted gain, to business value, and to cost.
+To test this approach, I held out one model — Model 3299 — as a test case.
+This model had an actual Gini gain of 29.75%, and it saved the business $3.1 million.
+From this, we can compute the implied gain per Gini: about $0.104 million per percentage point.
+I used my framework to predict the Gini improvement, and while the predicted gain was slightly higher than the actual, it was quite close.
+Multiplying the actual Gini gain by the gain-per-point gives a performance-linked gain estimate of $1.09 million.
+I’m still finalizing the training cost estimate for this model, but this early result shows that
+the framework can reasonably estimate financial impact based on just data complexity and prior scale.
