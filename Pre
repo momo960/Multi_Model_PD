@@ -1,40 +1,6 @@
-A Key Observation
-
-When the Gini of Logistic Regression (LR) is already high,
-➤ Switching to XGBoost yields limited improvement
-
-But when LR Gini is low,
-➤ XGBoost often brings significant gains
-
-
-🟦 [Insert graph: X-axis = LR Gini, Y-axis = XGB Gini – LR Gini]
-
-Why?
-
-If data is linearly separable, LR works well
-
-When data has complex non-linear structure, LR falls short
-➤ Tree-based models like XGBoost handle it better
-
-
-So the key question becomes:
-
-> Can we estimate the “complexity” of a dataset in advance, to predict whether it’s worth switching from LR to XGBoost?
-
-
-
-
----
-
-Challenges in Measuring Data Complexity
-
-Metrics like mutual information or covariance only capture relationships between individual features and the label
-➤ They ignore interactions between features
-
-Capturing higher-order interactions requires explicit feature crosses, which are computationally expensive
-
-
-Simple and practical solution:
-
-> ✅ Train a quick LR model on a small data subset
-→ Use its Gini as a proxy for data complexity
+To justify using Gini from a small-sample Logistic Regression as a proxy for data complexity, I have four supporting points:
+First, there's a paper that uses F1 score to tell whether a dataset is linearly separable. I adapt that logic — but use Gini and default capture rate, since those are more meaningful for our fraud use case.
+The intuition is simple: when data is linearly separable, Logistic Regression will already perform well — and tree models like XGBoost won’t add much.
+Second, I ran an empirical check. I plotted performance gain from XGBoost over LR against Gini from a small-sample LR, and they are strongly correlated. This gives practical support to the theory.
+Third, I only have five models to work with, which means just four data points for training. With that limitation, I can’t build a complex meta-model. At most I can use one feature — and Gini is a natural candidate.
+Last, this method is computationally cheap. I only need a 1-million-row subset to fit LR and get the Gini. It's fast, simple, and gives a directional estimate of whether an algorithm upgrade is worth it.
