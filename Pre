@@ -1,6 +1,12 @@
-To justify using Gini from a small-sample Logistic Regression as a proxy for data complexity, I have four supporting points:
-First, there's a paper that uses F1 score to tell whether a dataset is linearly separable. I adapt that logic — but use Gini and default capture rate, since those are more meaningful for our fraud use case.
-The intuition is simple: when data is linearly separable, Logistic Regression will already perform well — and tree models like XGBoost won’t add much.
-Second, I ran an empirical check. I plotted performance gain from XGBoost over LR against Gini from a small-sample LR, and they are strongly correlated. This gives practical support to the theory.
-Third, I only have five models to work with, which means just four data points for training. With that limitation, I can’t build a complex meta-model. At most I can use one feature — and Gini is a natural candidate.
-Last, this method is computationally cheap. I only need a 1-million-row subset to fit LR and get the Gini. It's fast, simple, and gives a directional estimate of whether an algorithm upgrade is worth it.
+Now that I can predict how much Gini and default capture rate will improve, the next question is:
+How much business value does that translate to?
+The challenge is that every model serves a different business problem, with a different scale of impact.
+For one model, a 2% improvement in capture rate might save millions — for another, it might mean very little.
+To address this, I extract business scale from recent model documentation, using the relationship between a model's reported performance gain and its associated dollar impact.
+Once I have this scale, I combine it with the predicted performance improvement to estimate a performance-linked gain in dollars.
+The final step is to estimate the cost of switching algorithms.
+In my study, XGBoost required around 112 iterations, while Logistic Regression needed only 25.
+And each XGBoost iteration is hundreds of times more expensive in compute time.
+Using cloud pricing data, I calculate the training cost of moving to a more complex algorithm.
+At this point, I have all the components needed for a cost-benefit analysis —
+from data complexity, to predicted gain, to business value, and to cost.
