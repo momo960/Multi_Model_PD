@@ -1,0 +1,71 @@
+import numpy as np
+from scipy.optimize import curve_fit
+import matplotlib.pyplot as plt
+
+# 模型函数定义：幂律形式
+def power_law(N, A, B, C):
+    return A - B * N**(-C)
+
+# 模拟数据点（替换成你的）
+N_data = np.array([1000, 3000, 10000, 30000, 100000, 300000])
+AUC_data = np.array([0.70, 0.74, 0.78, 0.80, 0.82, 0.83])
+
+# 拟合
+popt, pcov = curve_fit(power_law, N_data, AUC_data, bounds=([0.5, 0, 0], [1.0, 1.0, 1.0]))
+A_fit, B_fit, C_fit = popt
+
+# 拟合曲线
+N_fit = np.logspace(np.log10(N_data.min()), np.log10(N_data.max()), 100)
+AUC_fit = power_law(N_fit, *popt)
+
+# 画图
+plt.figure(figsize=(8, 5))
+plt.plot(N_data, AUC_data, 'o', label='Observed')
+plt.plot(N_fit, AUC_fit, '-', label=f'Fitted: A={A_fit:.3f}, B={B_fit:.3f}, C={C_fit:.3f}')
+plt.xscale('log')
+plt.xlabel('Training Size (log scale)')
+plt.ylabel('AUC')
+plt.title('Power-law fit: AUC vs Training Size')
+plt.legend()
+plt.grid(True)
+plt.show()
+
+
+
+import numpy as np
+from scipy.optimize import curve_fit
+import matplotlib.pyplot as plt
+
+# 模型定义：指数增长饱和型
+def exponential_growth(N, A, B, C):
+    return A * (1 - np.exp(-B * N**C))
+
+# 你的数据点（示例，可替换）
+N_data = np.array([1000, 3000, 10000, 30000, 100000, 300000])
+AUC_data = np.array([0.70, 0.74, 0.78, 0.80, 0.82, 0.83])
+
+# 拟合
+popt, pcov = curve_fit(
+    exponential_growth,
+    N_data,
+    AUC_data,
+    bounds=([0.5, 1e-10, 0], [1.0, 1.0, 1.0]),
+    maxfev=10000  # 防止迭代不足
+)
+A_fit, B_fit, C_fit = popt
+
+# 生成拟合曲线
+N_fit = np.logspace(np.log10(N_data.min()), np.log10(N_data.max()), 200)
+AUC_fit = exponential_growth(N_fit, *popt)
+
+# 画图
+plt.figure(figsize=(8, 5))
+plt.plot(N_data, AUC_data, 'o', label='Observed')
+plt.plot(N_fit, AUC_fit, '-', label=f'Fitted: A={A_fit:.3f}, B={B_fit:.3e}, C={C_fit:.3f}')
+plt.xscale('log')
+plt.xlabel('Training Size (log scale)')
+plt.ylabel('AUC')
+plt.title('Exponential Saturation Fit: AUC vs Training Size')
+plt.legend()
+plt.grid(True)
+plt.show()
