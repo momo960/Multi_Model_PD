@@ -1,31 +1,33 @@
-1 Introduction
-Predictive models in production environments are periodically updated to maintain accuracy, adapt to new data patterns, and leverage methodological advances. Common enhancement approaches include switching to more advanced algorithms, increasing training data volume, and modifying or engineering features. While these changes often yield measurable performance gains, they also incur significant costs in time, resources, and operational complexity.
+To train and evaluate the proposed framework, we selected seven existing business models from internal production environments:
 
-This paper addresses a central question:
-When is the performance improvement from updating algorithms, data, or features worth the cost?
+Five fraud detection models,
 
-To answer this, we propose a framework that isolates the performance impact of each factor while holding others constant, estimates the associated costs, and translates results into business value. This structured approach aims to guide cost–benefit decisions for model updates.
+Two marketing response models.
 
-1.1 Business Context
-In large-scale applications such as credit risk modeling, fraud detection, and marketing analytics, performance monitoring is continuous. When degradation occurs or new opportunities emerge, model redevelopment projects are initiated. These projects typically fall into three categories:
+The fraud models were chosen because they share broadly similar data structures, including comparable feature engineering approaches and target definitions, making it easier to identify systematic relationships between model characteristics, performance gains, and costs. The marketing models were included to test the generalization capability of the framework, as they operate in a different domain and have lower baseline Gini scores, representing less separable prediction problems.
 
-Algorithm upgrades – moving from simpler interpretable methods to complex non-linear models,
+Model availability was partly constrained by operational access—only these seven models were eligible for inclusion. Within this constraint, the selection was guided by the need for structural similarity in the datasets, ensuring that observed performance–cost patterns would not be dominated by unrelated structural differences.
 
-Data expansion – adding more historical records or integrating new data sources,
+For each selected model, we compiled relevant metadata from internal documentation, including:
 
-Feature enhancements – introducing or refining predictive variables.
+Business model type (fraud / marketing),
 
-While capable of boosting predictive performance, these initiatives often require months of development and validation, significant human expertise, and extensive computational resources. In mature modeling environments where baseline performance is already high, the marginal benefit may be small relative to cost. This creates an ongoing strategic challenge: determining when an update is justified and which enhancement type offers the greatest ROI.
+Model ID (internal reference),
 
-1.2 Objective of the Framework
-The framework’s objective is to support evidence-based decision-making for model updates by:
+Most recent update (nature of last enhancement),
 
-Quantifying performance gain from each enhancement type in isolation,
+Documented performance improvement from last update,
 
-Estimating associated costs in time, labor, and infrastructure,
+Estimated dollar savings from last update,
 
-Translating gains into business value metrics such as dollar savings or risk reduction,
+Dataset size (number of records),
 
-Providing a decision-support tool for prioritizing model redevelopment efforts.
+Number of features,
 
-By linking technical evaluation with business impact, the framework ensures that modeling investments are strategically targeted and economically justified.
+Algorithm type,
+
+Event rate (positive class proportion),
+
+Baseline Gini (as reported in the model documentation, used as a measure of separability).
+
+These details are summarized in Table 1, which provides an at-a-glance overview of the experimental models and highlights their diversity in scale, complexity, and baseline performance.
