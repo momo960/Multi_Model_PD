@@ -1,0 +1,31 @@
+1 Introduction
+Predictive models in production environments are periodically updated to maintain accuracy, adapt to new data patterns, and leverage methodological advances. Common enhancement approaches include switching to more advanced algorithms, increasing training data volume, and modifying or engineering features. While these changes often yield measurable performance gains, they also incur significant costs in time, resources, and operational complexity.
+
+This paper addresses a central question:
+When is the performance improvement from updating algorithms, data, or features worth the cost?
+
+To answer this, we propose a framework that isolates the performance impact of each factor while holding others constant, estimates the associated costs, and translates results into business value. This structured approach aims to guide cost–benefit decisions for model updates.
+
+1.1 Business Context
+In large-scale applications such as credit risk modeling, fraud detection, and marketing analytics, performance monitoring is continuous. When degradation occurs or new opportunities emerge, model redevelopment projects are initiated. These projects typically fall into three categories:
+
+Algorithm upgrades – moving from simpler interpretable methods to complex non-linear models,
+
+Data expansion – adding more historical records or integrating new data sources,
+
+Feature enhancements – introducing or refining predictive variables.
+
+While capable of boosting predictive performance, these initiatives often require months of development and validation, significant human expertise, and extensive computational resources. In mature modeling environments where baseline performance is already high, the marginal benefit may be small relative to cost. This creates an ongoing strategic challenge: determining when an update is justified and which enhancement type offers the greatest ROI.
+
+1.2 Objective of the Framework
+The framework’s objective is to support evidence-based decision-making for model updates by:
+
+Quantifying performance gain from each enhancement type in isolation,
+
+Estimating associated costs in time, labor, and infrastructure,
+
+Translating gains into business value metrics such as dollar savings or risk reduction,
+
+Providing a decision-support tool for prioritizing model redevelopment efforts.
+
+By linking technical evaluation with business impact, the framework ensures that modeling investments are strategically targeted and economically justified.
