@@ -1,33 +1,146 @@
-To train and evaluate the proposed framework, we selected seven existing business models from internal production environments:
+2.2 Experimental Setup
+To keep the white-paper concise, the entire experimental design is explained in only two sub-sections: Data Preparation (how we sample and evaluate) and Performance- & Cost-Experiments (how we create the targets that every sub-framework will predict).
 
-Five fraud detection models,
+2.2.1 Data Preparation
+Item	Approach
+Sampling unit	Stratified random rows from each local dataset (fraud × 5, marketing × 2).
+Dev vs OOT split	Each dataset is chronologically split into a Dev window for training and a fixed Out-of-Time (OOT) window for evaluation. OOT remains identical across all experiments on the same dataset to ensure comparability.
+Reference sample sizes	Algorithm and Data-Size studies: reference sample = 5 million (5 MM) rows.
+Feature study: reference sample = 3 MM rows (sufficient for single-feature ablations).
+Why 5 MM / 3 MM?	Benchmark tests showed that an XGB trained on 5 MM rows differs by ≤ 0.5 pp in Gini from training on the full dataset, but it finishes overnight on a 48-core server. 3 MM keeps the feature ablation grid tractable.
 
-Two marketing response models.
+All Gini scores reported below are obtained by training on the Dev sample and evaluating on the OOT window; cross-validation is not used.
 
-The fraud models were chosen because they share broadly similar data structures, including comparable feature engineering approaches and target definitions, making it easier to identify systematic relationships between model characteristics, performance gains, and costs. The marketing models were included to test the generalization capability of the framework, as they operate in a different domain and have lower baseline Gini scores, representing less separable prediction problems.
+2.2.2 Performance- & Cost-Experiments
+Dimension	Experimental steps (per dataset)	Output used by the framework
+Algorithm upgrade (ALG)	• Train Logistic Regression and XGB on the same 5 MM Dev sample.
+• Record 
+Δ
+𝐺
+𝑖
+𝑛
+𝑖
+ALG
+=
+𝐺
+𝑖
+𝑛
+𝑖
+XGB
+−
+𝐺
+𝑖
+𝑛
+𝑖
+LR
+ΔGini 
+ALG
+​
+ =Gini 
+XGB
+​
+ −Gini 
+LR
+​
+ on OOT.	7 data points (one per dataset): each 
+Δ
+𝐺
+𝑖
+𝑛
+𝑖
+ALG
+ΔGini 
+ALG
+​
+  paired with a single explanatory factor.
+Data-size scaling (SIZE)	• From each dataset draw nested Dev subsets with sizes 
+[
+0.01
+,
+  
+0.05
+,
+  
+0.10
+,
+  
+0.50
+,
+  
+1
+,
+  
+2
+,
+  
+5
+]
+ 
+MM
+[0.01,0.05,0.10,0.50,1,2,5]MM.
+• Train XGB on each subset, measure OOT Gini.
+• Fit a three-parameter power-law curve 
+𝐺
+𝑖
+𝑛
+𝑖
+=
+𝑓
+(
+rows
+)
+Gini=f(rows).	7 fitted curves (≈ 49 points total). Each curve’s parameters become the SIZE target.
+Feature impact (FEAT)	• Identify top-10 and bottom-10 SHAP contributors from the model document.
+• On a 3 MM Dev sample, retrain XGB 21 times (baseline + 20 single-feature drops).
+• Compute 
+Δ
+𝐺
+𝑖
+𝑛
+𝑖
+𝑗
+=
+𝐺
+𝑖
+𝑛
+𝑖
+baseline
+−
+𝐺
+𝑖
+𝑛
+𝑖
+(
+−
+𝑗
+)
+ΔGini 
+j
+​
+ =Gini 
+baseline
+​
+ −Gini 
+(−j)
+​
+  on OOT.	70 data points (7 datasets × 10 drops). Each 
+Δ
+𝐺
+𝑖
+𝑛
+𝑖
+𝑗
+ΔGini 
+j
+​
+  is modelled with two explanatory factors.
+Cost capture	Pull development hours, validation effort, and infrastructure consumption from internal tracking systems; no additional model runs are needed.	Normalised cost vectors for ALG, SIZE, and FEAT, linked later to performance deltas.
 
-Model availability was partly constrained by operational access—only these seven models were eligible for inclusion. Within this constraint, the selection was guided by the need for structural similarity in the datasets, ensuring that observed performance–cost patterns would not be dominated by unrelated structural differences.
+Observation inventory
 
-For each selected model, we compiled relevant metadata from internal documentation, including:
+Sub-framework	Performance targets	Cost vectors	Regression factors
+ALG	7 ΔGini values	7	1 factor
+SIZE	7 curves (3 params × 7)	7	1 factor
+FEAT	70 ΔGini values	70 (est.)	2 factors
 
-Business model type (fraud / marketing),
-
-Model ID (internal reference),
-
-Most recent update (nature of last enhancement),
-
-Documented performance improvement from last update,
-
-Estimated dollar savings from last update,
-
-Dataset size (number of records),
-
-Number of features,
-
-Algorithm type,
-
-Event rate (positive class proportion),
-
-Baseline Gini (as reported in the model documentation, used as a measure of separability).
-
-These details are summarized in Table 1, which provides an at-a-glance overview of the experimental models and highlights their diversity in scale, complexity, and baseline performance.
+Linear least-squares is used throughout to fit coefficients and intercepts; diagnostics are reported in Section 4. The resulting dataset is compact yet sufficient to train the three sub-frameworks and to estimate a full performance–cost trade-off equation for each enhancement dimension.
