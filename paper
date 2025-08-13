@@ -1,20 +1,30 @@
 2.2 Experimental Setup
-To keep the white-paper concise, the entire experimental design is explained in only two sub-sections: Data Preparation (how we sample and evaluate) and Performance- & Cost-Experiments (how we create the targets that every sub-framework will predict).
+This section describes how we generated the empirical data that each sub-framework will learn to predict. Figure 1 (next page) provides a high-level workflow; the narrative below details sampling rules, model training settings, and the rationale for each design choice.
 
-2.2.1 Data Preparation
-Item	Approach
-Sampling unit	Stratified random rows from each local dataset (fraud × 5, marketing × 2).
-Dev vs OOT split	Each dataset is chronologically split into a Dev window for training and a fixed Out-of-Time (OOT) window for evaluation. OOT remains identical across all experiments on the same dataset to ensure comparability.
-Reference sample sizes	Algorithm and Data-Size studies: reference sample = 5 million (5 MM) rows.
-Feature study: reference sample = 3 MM rows (sufficient for single-feature ablations).
-Why 5 MM / 3 MM?	Benchmark tests showed that an XGB trained on 5 MM rows differs by ≤ 0.5 pp in Gini from training on the full dataset, but it finishes overnight on a 48-core server. 3 MM keeps the feature ablation grid tractable.
+2.2.1 Data Collection & Sampling Strategy
+All seven business datasets (see § 2.1) reside on local storage, so “collection” refers solely to drawing appropriately sized, stratified random samples for the experiments. Two principles guided the sampling:
 
-All Gini scores reported below are obtained by training on the Dev sample and evaluating on the OOT window; cross-validation is not used.
+Computational feasibility – each experiment had to finish within one overnight batch window on a 48-core server.
 
-2.2.2 Performance- & Cost-Experiments
-Dimension	Experimental steps (per dataset)	Output used by the framework
-Algorithm upgrade (ALG)	• Train Logistic Regression and XGB on the same 5 MM Dev sample.
-• Record 
+Representativeness – prior A/B checks showed that XGBoost (XGB) trained on 5 million (5 MM) rows yields a Gini within ±0.5 pp of training on the full dataset; therefore 5 MM rows are considered “statistically sufficient.”
+
+Unless otherwise noted, the class distribution of the sample mirrors the original event rate of each dataset.
+
+2.2.2 Algorithm-Impact Experiments (ALG)
+Objective. Measure the incremental performance gain from upgrading the modelling algorithm.
+
+Procedure (per dataset, 
+𝑛
+=
+7
+n=7).
+
+Draw a 5 MM stratified sample.
+
+Train a baseline Logistic Regression and a benchmark XGB using identical feature sets and five-fold CV.
+
+Record
+
 Δ
 𝐺
 𝑖
@@ -42,19 +52,36 @@ XGB
  −Gini 
 LR
 ​
- on OOT.	7 data points (one per dataset): each 
+ 
+This difference is the target variable that the ALG sub-framework will later predict.
+
+Why 5 MM? It balances run-time (≈ 30 minutes per model) with accuracy and mirrors full-data behaviour, making results transferable to production scale.
+
+Output: 7 data points 
+(
 Δ
 𝐺
 𝑖
 𝑛
 𝑖
 ALG
-ΔGini 
+,
+  
+dataset characteristics
+)
+(ΔGini 
 ALG
 ​
-  paired with a single explanatory factor.
-Data-size scaling (SIZE)	• From each dataset draw nested Dev subsets with sizes 
-[
+ ,dataset characteristics).
+
+2.2.3 Data-Size-Impact Experiments (SIZE)
+Objective. Quantify how model performance grows with additional data.
+
+Procedure (per dataset).
+
+Generate seven nested training sets with sizes expressed as fractions of 5 MM rows:
+
+{
 0.01
 ,
   
@@ -74,12 +101,12 @@ Data-size scaling (SIZE)	• From each dataset draw nested Dev subsets with siz
 ,
   
 5
-]
- 
-MM
-[0.01,0.05,0.10,0.50,1,2,5]MM.
-• Train XGB on each subset, measure OOT Gini.
-• Fit a three-parameter power-law curve 
+}
+ MM
+{0.01,0.05,0.10,0.50,1,2,5} MM
+Train an XGB model on each subset; record the resulting Gini scores.
+
+Fit a performance curve 
 𝐺
 𝑖
 𝑛
@@ -87,12 +114,27 @@ MM
 =
 𝑓
 (
-rows
+data size
 )
-Gini=f(rows).	7 fitted curves (≈ 49 points total). Each curve’s parameters become the SIZE target.
-Feature impact (FEAT)	• Identify top-10 and bottom-10 SHAP contributors from the model document.
-• On a 3 MM Dev sample, retrain XGB 21 times (baseline + 20 single-feature drops).
-• Compute 
+Gini=f(data size). Section 3.1 details the functional form (power-law with three parameters).
+
+Each dataset yields one curve; thus the SIZE sub-framework receives 7 fitted curves, one per dataset.
+
+2.2.4 Feature-Impact Experiments (FEAT)
+Objective. Estimate the marginal effect of adding or removing a single feature.
+
+Procedure (per dataset).
+
+From model documentation, take the top-10 and bottom-10 SHAP contributors (20 features).
+
+On a 3 MM stratified sample, retrain an XGB 20 + 1 times:
+
+Once with the full feature set (baseline).
+
+Twenty times, each time dropping exactly one of the selected features.
+
+Compute
+
 Δ
 𝐺
 𝑖
@@ -123,24 +165,30 @@ baseline
  −Gini 
 (−j)
 ​
-  on OOT.	70 data points (7 datasets × 10 drops). Each 
-Δ
-𝐺
-𝑖
-𝑛
-𝑖
+ 
+for each feature 
 𝑗
-ΔGini 
-j
-​
-  is modelled with two explanatory factors.
-Cost capture	Pull development hours, validation effort, and infrastructure consumption from internal tracking systems; no additional model runs are needed.	Normalised cost vectors for ALG, SIZE, and FEAT, linked later to performance deltas.
+j.
 
-Observation inventory
+Across seven datasets, this produces 
+7
+×
+10
+=
+70
+7×10=70 ΔGini measurements (only the top-10 removals are retained to avoid symmetry with additions). These form the target for the FEAT sub-framework.
 
-Sub-framework	Performance targets	Cost vectors	Regression factors
-ALG	7 ΔGini values	7	1 factor
-SIZE	7 curves (3 params × 7)	7	1 factor
-FEAT	70 ΔGini values	70 (est.)	2 factors
+2.2.5 Cost Measurements
+The cost dimension (development hours, validation effort, infrastructure hours, MLOps overhead) is captured from internal project tracking tools and does not require additional model training. Section 3.2 explains how these costs are normalised and linked to the performance deltas above.
 
-Linear least-squares is used throughout to fit coefficients and intercepts; diagnostics are reported in Section 4. The resulting dataset is compact yet sufficient to train the three sub-frameworks and to estimate a full performance–cost trade-off equation for each enhancement dimension.
+2.2.6 Predictive-Equation Fitting
+Because the algorithm and data-size experiments each supply only seven observations, their predictive equations use one explanatory factor apiece; feature impact, with 70 observations, is modelled with two factors. All relationships are estimated via ordinary least-squares linear regression; coefficients and statistical diagnostics appear in Section 4.
+
+This controlled experimental design produces a compact yet information-rich dataset:
+
+Sub-framework	Observations	Target Definition	Purpose
+ALG	7	ΔGini between XGB and LR	Algorithm upgrade ROI
+SIZE	7 curves (≈ 49 points)	Gini vs. data size	Data-scaling benefit
+FEAT	70	ΔGini per feature drop	Feature engineering ROI
+
+The setup ensures each performance delta can be attributed unambiguously to a single enhancement dimension, providing a solid empirical basis for the cost–benefit equations developed in the next section.
