@@ -1,18 +1,90 @@
-Performance gains are only half of the equation; a model upgrade is worthwhile only if the incremental benefit exceeds the incremental cost. We quantify cost along two practical axes—computation and labour—during the development → validation pipeline. Governance, monitoring, and production-run‐time costs are comparable across algorithms in our environment and are therefore excluded.
+The final step converts a technical metric (Gini uplift) into the financial metric (dollar gain) that business owners care about.
+Because each product line—fraud, marketing, credit risk—operates at a different scale, we compute a model-specific Gini-to-Dollar conversion rate directly from historic champion-versus-challenger results documented by the modelling teams.
 
-Cost component	Metric	Typical scale	Notes
-Computational	$ per training iteration	$10 – 15	75 M rows × 100 iterations ≈ $1 k; difference between LR and XGB is a few hundred dollars—negligible relative to labour.
-Labour	Person-hours × hourly rate	10³–10⁴ hrs	Dominated by feature crafting, hyper-parameter search, documentation, interpretability, and independent model-risk validation (MRV).
-3.2.1 Labour-Cost Template
+3.3.1 Deriving the Conversion Factor κ
 
-From internal project logs we derived typical effort envelopes:
+For every production model 
+𝑚
+m we extract from its last model-update document:
 
-Algorithm	Development (DEV)	Validation (VAL)
-Logistic Regression	3 months	1 month
-XGBoost	6 months	3 months
+Item	Symbol	Source
+Reported Gini improvement	
+Δ
+𝐺
+𝑖
+𝑛
+𝑖
+𝑚
+hist
+ΔGini
+m
+hist
+	​
 
-Assumptions for unit costing (can be localised per institution):
+	Model validation report
+Reported dollar benefit	
+Δ
+$
+𝑚
+hist
+Δ$
+m
+hist
+	​
 
-Primary modeller 1 FTE at $100 / hour, 7 h × 5 d × 4.3 wk / month
+	Business-case deck
 
-Supporting analyst 0.33 FTE at same rate
+The conversion factor is simply
+
+	
+  
+𝜅
+𝑚
+  
+=
+  
+Δ
+$
+𝑚
+hist
+Δ
+𝐺
+𝑖
+𝑛
+𝑖
+𝑚
+hist
+  
+		
+(5)
+κ
+m
+	​
+
+=
+ΔGini
+m
+hist
+	​
+
+Δ$
+m
+hist
+	​
+
+	​
+
+	​
+
+(5)
+
+Interpretation. 
+𝜅
+𝑚
+κ
+m
+	​
+
+ represents the incremental dollars generated (saved revenue, avoided fraud loss, added marketing margin, etc.) for each percentage-point of Gini improvement in model 
+𝑚
+m’s business context.
