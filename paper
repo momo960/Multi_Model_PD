@@ -1,173 +1,18 @@
-Adding or removing a single feature changes model performance through two opposing forces:
+Performance gains are only half of the equation; a model upgrade is worthwhile only if the incremental benefit exceeds the incremental cost. We quantify cost along two practical axes—computation and labour—during the development → validation pipeline. Governance, monitoring, and production-run‐time costs are comparable across algorithms in our environment and are therefore excluded.
 
-Concept	Effect on ΔGini	Desirable direction
-Relevance – how much new signal the feature contributes	↑ (positive)	High
-Redundancy – how much of that signal is already captured by existing features	↓ (negative)	Low
+Cost component	Metric	Typical scale	Notes
+Computational	$ per training iteration	$10 – 15	75 M rows × 100 iterations ≈ $1 k; difference between LR and XGB is a few hundred dollars—negligible relative to labour.
+Labour	Person-hours × hourly rate	10³–10⁴ hrs	Dominated by feature crafting, hyper-parameter search, documentation, interpretability, and independent model-risk validation (MRV).
+3.2.1 Labour-Cost Template
 
-Following the Maximum Relevance / Minimum Redundancy (mRMR) principle, we approximate
+From internal project logs we derived typical effort envelopes:
 
-	
-  
-Δ
-𝑃
-^
-FEAT
-  
-=
-  
-𝜆
-0
-+
-𝜆
-1
-  
-Relevance
-−
-𝜆
-2
-  
-Redundancy
-  
-		
-(3)
-ΔP
-FEAT
-	​
+Algorithm	Development (DEV)	Validation (VAL)
+Logistic Regression	3 months	1 month
+XGBoost	6 months	3 months
 
-=λ
-0
-	​
+Assumptions for unit costing (can be localised per institution):
 
-+λ
-1
-	​
+Primary modeller 1 FTE at $100 / hour, 7 h × 5 d × 4.3 wk / month
 
-Relevance−λ
-2
-	​
-
-Redundancy
-	​
-
-(3)
-
-with two inexpensive proxies that can be computed before full retraining.
-
-1 Relevance Proxy
-
-For candidate feature 
-𝑓
-𝑗
-f
-j
-	​
-
-:
-
-Relevance
-𝑗
-=
-Gini
-(
-𝑓
-𝑗
-,
-  
-𝑦
-)
-Relevance
-j
-	​
-
-=Gini(f
-j
-	​
-
-,y)
-
-i.e. the univariate Gini / AUC of 
-𝑓
-𝑗
-f
-j
-	​
-
- against the target on a 1 MM Dev subset.
-A higher value means 
-𝑓
-𝑗
-f
-j
-	​
-
- can separate the classes well on its own.
-
-2 Redundancy Proxy – CorrScore
-
-Compute MaxCorr – the largest absolute Pearson correlation between 
-𝑓
-𝑗
-f
-j
-	​
-
- and any existing feature.
-
-Identify the importance rank (MacCorrRank) of that most-correlated existing feature in the baseline XGB model (SHAP ranking; 1 = most important).
-
-Let 
-𝑝
-p be the total number of existing features.
-
-Define
-
-CorrScore
-𝑗
-  
-=
-  
-∣
-MaxCorr
-∣
-+
-MacCorrRank
-𝑝
-CorrScore
-j
-	​
-
-=
-	​
-
-MaxCorr
-	​
-
-+
-p
-MacCorrRank
-	​
-
-
-Interpretation.
-
-A high CorrScore means 
-𝑓
-𝑗
-f
-j
-	​
-
- is strongly correlated with a feature that is already important → little incremental value.
-
-A low CorrScore signals novel information.
-
-3 Model Fitting and Validation
-
-Dataset. 70 observations (7 datasets × 10 feature drops).
-Regression. OLS fit of Equation (3) with two predictors (Relevance, CorrScore).
-
-Domain	R²	Mean Abs. Error (ΔGini pp)
-Fraud (50 pts)	0.78	0.55
-Marketing (20 pts)	0.64	0.83
-
-Despite very different feature semantics in marketing data, the linear rule remains within ≈ 1 pp—adequate for “go / no-go” decisions on costly feature-engineering sprints.
+Supporting analyst 0.33 FTE at same rate
