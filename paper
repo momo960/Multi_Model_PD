@@ -1,90 +1,89 @@
-The final step converts a technical metric (Gini uplift) into the financial metric (dollar gain) that business owners care about.
-Because each product line—fraud, marketing, credit risk—operates at a different scale, we compute a model-specific Gini-to-Dollar conversion rate directly from historic champion-versus-challenger results documented by the modelling teams.
+Different product lines turn a point of Gini uplift into very different amounts of money.
+To compare any enhancement with its cost, the framework therefore calculates a model-specific Gini-to-Dollar factor, κ, and then applies a simple break-even rule.
 
-3.3.1 Deriving the Conversion Factor κ
+1 Derive κ once per business model
 
-For every production model 
-𝑚
-m we extract from its last model-update document:
+From the last champion-vs-challenger release notes we read:
 
-Item	Symbol	Source
-Reported Gini improvement	
+the reported Gini gain (e.g., +4.2 pp)
+
+the reported dollar benefit (e.g., $38 million saved)
+
+Their ratio is
+
+𝜅
+  
+=
+  
+dollar benefit
+Gini gain
+[
+dollars per 1 pp Gini
+]
+.
+κ=
+Gini gain
+dollar benefit
+	​
+
+[dollars per 1 pp Gini].
+
+Fraud portfolios typically yield a high κ; small-scale marketing campaigns a much lower one.
+Because the source is business-approved documentation, κ already reflects portfolio size, loss rates, approval policies, etc.
+
+2 Predict dollars for any new uplift
+
+If a sub-framework estimates a performance gain
+
 Δ
 𝐺
 𝑖
 𝑛
 𝑖
-𝑚
-hist
+^
 ΔGini
-m
-hist
-	​
+ for the proposed change, the projected dollar benefit is
 
-	Model validation report
-Reported dollar benefit	
 Δ
 $
-𝑚
-hist
-Δ$
-m
-hist
-	​
-
-	Business-case deck
-
-The conversion factor is simply
-
-	
-  
-𝜅
-𝑚
+^
   
 =
   
-Δ
-$
-𝑚
-hist
+𝜅
+×
 Δ
 𝐺
 𝑖
 𝑛
 𝑖
-𝑚
-hist
-  
-		
-(5)
-κ
-m
-	​
-
-=
-ΔGini
-m
-hist
-	​
-
+^
+.
 Δ$
-m
-hist
 	​
 
+=κ×
+ΔGini
+.
+3 Compare benefit with incremental cost
+
+From Section 3.2 we know the extra spend, ΔCost, required to deliver the change.
+The decision rule is straightforward:
+
+Accept the enhancement if
+
+Δ
+$
+^
+  
+≥
+  
+Δ
+Cost
+,
+Δ$
 	​
 
-	​
+≥ΔCost,
 
-(5)
-
-Interpretation. 
-𝜅
-𝑚
-κ
-m
-	​
-
- represents the incremental dollars generated (saved revenue, avoided fraud loss, added marketing margin, etc.) for each percentage-point of Gini improvement in model 
-𝑚
-m’s business context.
+otherwise defer or reject.
