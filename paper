@@ -1,27 +1,11 @@
-Although the framework already delivers decision-grade accuracy, two obvious gaps limit its scope and statistical power. Addressing them will sharpen the methodology and broaden its business relevance.
+Why start with the algorithm itself?
+In production we often face a choice between keeping a well-understood Logistic Regression and upgrading to a more powerful—but costlier—tree or neural model. The practical question is not “Which algorithm is best in theory?” but “How much extra lift will a complex model actually buy us on this dataset?”
+The following section shows how a two-minute Logistic Regression run can act as a proxy for hidden non-linearity, allowing us to forecast the LR → XGB uplift without building the XGB first.
 
-6.1 Model-Refresh Timing: Data Freshness
+Why isolate data volume?
+Adding rows is usually the safest way to improve performance, yet the benefit tails off and the storage / re-processing bill climbs quickly. What we need is a curve that tells us, for any given model, whether the next million records are worth ingesting.
+The next pages derive that curve—using a three-parameter power law—and show how two cheap statistics (event rate and separability) are enough to estimate its shape in advance.
 
-Why it matters. In many portfolios, simply retraining on newer records can boost Gini by 0.5–2 pp without any other change. Ignoring this dimension leaves money—and sometimes risk reduction—on the table.
-
-Current state. Data-freshness impact was treated as neutral in the Gen 6 → Gen 7 back-test (§ 4.2) because no proxy is yet defined.
-
-Next steps.
-
-Age-stratified re-train experiments on at least three models to measure how Gini drifts with record age.
-
-Fit a time-decay curve (e.g., exponential) using simple proxies such as average record age, business-cycle volatility, or target-rate drift.
-
-Integrate the curve into the cost-benefit engine so that “retrain now vs. later” becomes an explicit option alongside algorithm, data size, and feature changes.
-
-6.2 Sample Size: From Seven Models to a Portfolio-Scale Corpus
-
-Limitation. Seven datasets provide only enough degrees of freedom for one-factor regressions. More models would allow multi-factor equations and formal validation splits.
-
-Expansion plan.
-
-Onboard 20–30 additional fraud and marketing models (including challenger proofs of concept) to diversify event rates, dimensionality, and baseline Gini.
-
-Re-estimate the ALG, SIZE, and FEAT equations with regularised multivariate regressions—e.g., elastic-net—to capture interaction effects without over-fit.
-
-Reserve 20 % of the enlarged corpus as a hold-out portfolio test, giving management a clear view of out-of-sample robustness.
+Why focus on one feature at a time?
+Feature work is the most labour-intensive part of model development, but most proposed variables never make it to production. Before an analyst burns a week engineering a new field, management wants to know the likely payoff.
+This section introduces a relevance–redundancy score that predicts the Gini change from adding (or dropping) a single feature, using numbers that can be calculated in minutes from existing data.
