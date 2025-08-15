@@ -1,6 +1,33 @@
-To see how the framework performs outside the lab, we retro-fitted it to an actual production change: the move from Generation 6 to Generation 7 of fraud Model 1119.
-That release introduced three modifications—fresher data, a handful of new variables, and the retirement of some low-impact variables. Only the new-variable piece falls within the scope of the current framework, so we treated the other two changes as neutral and focused on what the Feature module could tell us.
+This white paper has presented a practical, numbers-driven framework for answering a question every modelling team faces: “Is a proposed upgrade really worth it?”
 
-Using the relevance-minus-redundancy equation from § 3.1.3, the framework forecast a 2.0-point Gini lift once the extra variables were added. When Gen 7 went live, business monitoring reported a 2.7-point lift on the identical out-of-time window—just 0.7 points above the projection, well inside the ±1 pp tolerance that model-risk governance regards as “on target.”
+Three transparent formulas deliver instant Gini-uplift estimates
 
-The back-test illustrates two practical advantages. First, the proxy-based estimate was good enough to clear the break-even hurdle (1.4 pp for this portfolio), which would have justified the development spend had the framework been consulted beforehand. Second, the estimate took less than an hour to produce, compared with the six months the full Gen 7 build actually consumed. In short, even without modelling every conceivable factor, the framework offered an early, low-cost and remarkably accurate read on whether the upgrade would pay off—a strong signal of its value in real-world decision making.
+Algorithm switch (LR → XGB). A single non-linearity proxy—Mismatch—predicts the uplift with < 2 pp error across fraud and marketing datasets.
+
+Adding data. A three-parameter power-law, whose coefficients come from event rate and separability, reproduces each learning curve within ~2 pp.
+
+Adding features. A relevance-minus-redundancy rule, built from univariate Gini and a simple CorrScore, forecasts single-feature impact with ~0.3 pp error.
+
+Predicted Gini gain becomes predicted dollar gain by multiplying with a business-specific Gini-to-Dollar factor extracted from past challenger wins.
+
+Incremental cost is quantified—primarily labour time, secondarily computation—and compared with the dollar benefit to obtain a breakeven threshold.
+
+Back-testing on an actual production release (Model 1119 Gen 6 → Gen 7) showed the framework missed the realised uplift by only 0.7 pp—well inside governance tolerance—while requiring less than an hour of analyst effort.
+
+What the framework gives the business
+
+Speed. Early go/no-go guidance without months of experimentation.
+
+Transparency. Each equation links directly to an intuitive data property—no black-box meta-models.
+
+Consistency. A single yard-stick for algorithm changes, data-expansion requests, and feature-engineering pitches.
+
+Limitations and next steps
+
+Data freshness and feature reduction effects are still handled by assumptions; future work will add explicit proxies for both.
+
+Extension beyond XGBoost—e.g., to neural networks—requires new calibration but no structural change.
+
+Automating proxy extraction and report generation would embed the framework directly into the model-governance pipeline.
+
+With these enhancements, the framework can become a standing control that keeps model-development resources focused where they deliver the greatest business value.
