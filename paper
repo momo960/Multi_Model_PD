@@ -1,33 +1,27 @@
-This white paper has presented a practical, numbers-driven framework for answering a question every modelling team faces: “Is a proposed upgrade really worth it?”
+Although the framework already delivers decision-grade accuracy, two obvious gaps limit its scope and statistical power. Addressing them will sharpen the methodology and broaden its business relevance.
 
-Three transparent formulas deliver instant Gini-uplift estimates
+6.1 Model-Refresh Timing: Data Freshness
 
-Algorithm switch (LR → XGB). A single non-linearity proxy—Mismatch—predicts the uplift with < 2 pp error across fraud and marketing datasets.
+Why it matters. In many portfolios, simply retraining on newer records can boost Gini by 0.5–2 pp without any other change. Ignoring this dimension leaves money—and sometimes risk reduction—on the table.
 
-Adding data. A three-parameter power-law, whose coefficients come from event rate and separability, reproduces each learning curve within ~2 pp.
+Current state. Data-freshness impact was treated as neutral in the Gen 6 → Gen 7 back-test (§ 4.2) because no proxy is yet defined.
 
-Adding features. A relevance-minus-redundancy rule, built from univariate Gini and a simple CorrScore, forecasts single-feature impact with ~0.3 pp error.
+Next steps.
 
-Predicted Gini gain becomes predicted dollar gain by multiplying with a business-specific Gini-to-Dollar factor extracted from past challenger wins.
+Age-stratified re-train experiments on at least three models to measure how Gini drifts with record age.
 
-Incremental cost is quantified—primarily labour time, secondarily computation—and compared with the dollar benefit to obtain a breakeven threshold.
+Fit a time-decay curve (e.g., exponential) using simple proxies such as average record age, business-cycle volatility, or target-rate drift.
 
-Back-testing on an actual production release (Model 1119 Gen 6 → Gen 7) showed the framework missed the realised uplift by only 0.7 pp—well inside governance tolerance—while requiring less than an hour of analyst effort.
+Integrate the curve into the cost-benefit engine so that “retrain now vs. later” becomes an explicit option alongside algorithm, data size, and feature changes.
 
-What the framework gives the business
+6.2 Sample Size: From Seven Models to a Portfolio-Scale Corpus
 
-Speed. Early go/no-go guidance without months of experimentation.
+Limitation. Seven datasets provide only enough degrees of freedom for one-factor regressions. More models would allow multi-factor equations and formal validation splits.
 
-Transparency. Each equation links directly to an intuitive data property—no black-box meta-models.
+Expansion plan.
 
-Consistency. A single yard-stick for algorithm changes, data-expansion requests, and feature-engineering pitches.
+Onboard 20–30 additional fraud and marketing models (including challenger proofs of concept) to diversify event rates, dimensionality, and baseline Gini.
 
-Limitations and next steps
+Re-estimate the ALG, SIZE, and FEAT equations with regularised multivariate regressions—e.g., elastic-net—to capture interaction effects without over-fit.
 
-Data freshness and feature reduction effects are still handled by assumptions; future work will add explicit proxies for both.
-
-Extension beyond XGBoost—e.g., to neural networks—requires new calibration but no structural change.
-
-Automating proxy extraction and report generation would embed the framework directly into the model-governance pipeline.
-
-With these enhancements, the framework can become a standing control that keeps model-development resources focused where they deliver the greatest business value.
+Reserve 20 % of the enlarged corpus as a hold-out portfolio test, giving management a clear view of out-of-sample robustness.
